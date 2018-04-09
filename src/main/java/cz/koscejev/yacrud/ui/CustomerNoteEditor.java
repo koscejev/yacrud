@@ -4,8 +4,10 @@ import com.vaadin.event.EventRouter;
 import com.vaadin.shared.Registration;
 import com.vaadin.ui.Button;
 import com.vaadin.ui.Component;
+import com.vaadin.ui.CustomComponent;
 import com.vaadin.ui.HorizontalLayout;
 import com.vaadin.ui.Label;
+import com.vaadin.ui.Panel;
 import com.vaadin.ui.TextArea;
 import com.vaadin.ui.VerticalLayout;
 import com.vaadin.util.ReflectTools;
@@ -20,81 +22,95 @@ import java.util.EventObject;
  * Panel for displaying and editing CustomerNote details.
  * Allows creating a new CustomerNote, if a CustomerNote is not loaded yet.
  */
-public class CustomerNoteEditor extends VerticalLayout {
+public class CustomerNoteEditor extends CustomComponent {
+	private final EventRouter eventRouter = new EventRouter();
+
+	private final Panel panel;
 	private final Label fieldCustomer;
 	private final Label fieldCreatedOn;
 	private final TextArea fieldText;
-	private final EventRouter eventRouter = new EventRouter();
 
+	private Customer customer;
 	private CustomerNote note;
 
 	public CustomerNoteEditor(CustomerNoteRepository repo) {
+		VerticalLayout layout = new VerticalLayout();
 		Component buttons = initButtonPanel(repo);
-		addComponent(buttons);
+		layout.addComponent(buttons);
 
 		fieldCustomer = new Label();
 		fieldCustomer.setCaption("Customer");
-		addComponent(fieldCustomer);
+		layout.addComponent(fieldCustomer);
 
 		fieldCreatedOn = new Label();
 		fieldCreatedOn.setCaption("Created on");
-		addComponent(fieldCreatedOn);
+		layout.addComponent(fieldCreatedOn);
 
 		fieldText = new TextArea("Text");
 		fieldText.setSizeFull();
-		addComponent(fieldText);
+		layout.addComponent(fieldText);
 
-		resetFields();
-		setSizeFull();
-		setExpandRatio(fieldCustomer, 0);
-		setExpandRatio(fieldCreatedOn, 0);
-		setExpandRatio(fieldText, 1);
-		setExpandRatio(buttons, 0);
+		layout.setSizeFull();
+		layout.setExpandRatio(fieldCustomer, 0);
+		layout.setExpandRatio(fieldCreatedOn, 0);
+		layout.setExpandRatio(fieldText, 1);
+		layout.setExpandRatio(buttons, 0);
+
+		panel = new Panel("Customer Note", layout);
+		panel.setSizeFull();
+
+		setCompositionRoot(panel);
+
+		reset();
 	}
 
 	private Component initButtonPanel(CustomerNoteRepository repo) {
 		Button buttonSave = new Button("Save");
 		buttonSave.addClickListener(event -> {
+			if (note == null) {
+				note = new CustomerNote();
+				note.setCustomer(customer);
+			}
 			note.setText(fieldText.getValue());
 			repo.save(note);
 			eventRouter.fireEvent(new CustomerNoteSaveEvent(this, note));
 		});
 
 		Button buttonReset = new Button("Reset");
-		buttonReset.addClickListener(event -> resetFields());
+		buttonReset.addClickListener(event -> reset());
 
 		return new HorizontalLayout(buttonSave, buttonReset);
 	}
 
-	private void resetFields() {
-		if (note != null) {
-			fieldCustomer.setValue(note.getCustomer() != null ? note.getCustomer().getName() : "");
-			fieldCreatedOn.setValue(note.getCreatedOn() != null ? note.getCreatedOn().toString() : "");
-			fieldText.setValue(note.getText() != null ? note.getText() : "");
+	private void reset() {
+		if (customer != null) {
+			setEnabled(true);
+			fieldCustomer.setValue(customer.getName());
 		} else {
+			setEnabled(false);
 			fieldCustomer.setValue("");
+		}
+
+		if (note != null) {
+			panel.setCaption("Edit Customer Note");
+			fieldCreatedOn.setValue(note.getCreatedOn().toString());
+			fieldText.setValue(note.getText());
+		} else {
+			panel.setCaption("Add Customer Note");
 			fieldCreatedOn.setValue("");
 			fieldText.setValue("");
 		}
-		setEnabled(note != null);
 	}
 
 	public void setCustomer(Customer customer) {
-		if (customer == null) {
-			this.note = null;
-		} else {
-			this.note = CustomerNote.builder().customer(customer).build();
-		}
-		resetFields();
+		this.customer = customer;
+		this.note = null;
+		reset();
 	}
 
 	public void setNote(CustomerNote note) {
-		if (note == null) {
-			this.note = CustomerNote.builder().customer(this.note.getCustomer()).build();
-		} else {
-			this.note = note;
-		}
-		resetFields();
+		this.note = note;
+		reset();
 	}
 
 	public Registration addSaveListener(CustomerNoteSaveListener listener) {

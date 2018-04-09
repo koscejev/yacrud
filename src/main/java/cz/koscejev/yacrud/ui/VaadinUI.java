@@ -3,7 +3,6 @@ package cz.koscejev.yacrud.ui;
 import com.vaadin.server.VaadinRequest;
 import com.vaadin.spring.annotation.SpringUI;
 import com.vaadin.ui.HorizontalLayout;
-import com.vaadin.ui.Panel;
 import com.vaadin.ui.UI;
 import com.vaadin.ui.VerticalLayout;
 import cz.koscejev.yacrud.repository.CustomerNoteRepository;
@@ -16,8 +15,13 @@ public class VaadinUI extends UI {
 
 	public VaadinUI(CustomerRepository customers, CustomerNoteRepository customerNotes) {
 		CustomerGrid customerGrid = new CustomerGrid(customers);
+		customerGrid.setSizeFull();
+
 		CustomerNoteGrid customerNoteGrid = new CustomerNoteGrid(customerNotes);
+		customerNoteGrid.setSizeFull();
+
 		CustomerNoteEditor customerNoteEditor = new CustomerNoteEditor(customerNotes);
+		customerNoteEditor.setSizeFull();
 
 		// propagate customer selection to customer note grid
 		customerGrid.addSelectionListener(event -> {
@@ -29,24 +33,16 @@ public class VaadinUI extends UI {
 			customerNoteEditor.setNote(event.getFirstSelectedItem().orElse(null)));
 
 		customerNoteEditor.addSaveListener(event ->
-			customerNoteGrid.getDataProvider().refreshAll());
-
-		Panel customerNotesPanel = new Panel("Customer Notes", customerNoteGrid);
-		customerNotesPanel.setSizeFull();
-
-		Panel customerNotePanel = new Panel("Customer Note", customerNoteEditor);
-		customerNotePanel.setSizeFull();
+			customerNoteGrid.refreshAll());
 
 		HorizontalLayout noteManagement = new HorizontalLayout();
 		noteManagement.setMargin(false);
-		noteManagement.addComponentsAndExpand(customerNotesPanel, customerNotePanel);
+		noteManagement.addComponentsAndExpand(customerNoteGrid, customerNoteEditor);
 
-		content = new VerticalLayout();
-		content.setMargin(true);
-		content.setSizeFull();
-		content.addComponentsAndExpand(
-			new Panel("Customers", customerGrid),
-			noteManagement);
+		this.content = new VerticalLayout();
+		this.content.setMargin(true);
+		this.content.setSizeFull();
+		this.content.addComponentsAndExpand(customerGrid, noteManagement);
 	}
 
 	@Override

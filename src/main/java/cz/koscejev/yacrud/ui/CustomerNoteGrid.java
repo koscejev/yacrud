@@ -2,7 +2,11 @@ package cz.koscejev.yacrud.ui;
 
 import com.vaadin.data.provider.ConfigurableFilterDataProvider;
 import com.vaadin.data.provider.DataProvider;
+import com.vaadin.event.selection.SelectionListener;
+import com.vaadin.shared.Registration;
+import com.vaadin.ui.CustomComponent;
 import com.vaadin.ui.Grid;
+import com.vaadin.ui.Panel;
 import cz.koscejev.yacrud.model.Customer;
 import cz.koscejev.yacrud.model.CustomerNote;
 import cz.koscejev.yacrud.repository.CustomerNoteRepository;
@@ -10,22 +14,27 @@ import org.springframework.data.domain.Example;
 
 import java.util.stream.Stream;
 
-public class CustomerNoteGrid extends Grid<CustomerNote> {
+public class CustomerNoteGrid extends CustomComponent {
+
 	private final ConfigurableFilterDataProvider<CustomerNote, Void, Example<CustomerNote>> dataProvider;
+	private final Grid<CustomerNote> grid;
 
 	public CustomerNoteGrid(CustomerNoteRepository repo) {
-		addColumn(CustomerNote::getCreatedOn)
+		grid = new Grid<>();
+
+		grid.addColumn(CustomerNote::getCreatedOn)
 			.setId("createdOn")
 			.setCaption("Created On")
-			.setExpandRatio(1);
-		addColumn(CustomerNote::getText)
+			.setExpandRatio(0);
+		grid.addColumn(CustomerNote::getText)
 			.setId("text")
 			.setCaption("Text")
-			.setExpandRatio(15)
+			.setExpandRatio(1)
 			.setSortable(false);
-		setSizeFull();
+		grid.setSelectionMode(Grid.SelectionMode.SINGLE);
+		grid.setSizeFull();
 
-		setDataProvider(dataProvider = DataProvider.<CustomerNote, Example<CustomerNote>>fromFilteringCallbacks(
+		dataProvider = DataProvider.<CustomerNote, Example<CustomerNote>>fromFilteringCallbacks(
 			query -> query.getFilter()
 				.map(filter -> repo.streamByExample(query))
 				.orElse(Stream.empty()),
@@ -33,7 +42,13 @@ public class CustomerNoteGrid extends Grid<CustomerNote> {
 				.map(repo::count)
 				.map(Math::toIntExact)
 				.orElse(0))
-			.withConfigurableFilter());
+			.withConfigurableFilter();
+		grid.setDataProvider(dataProvider);
+
+		Panel panel = new Panel("Customer Notes", grid);
+		panel.setSizeFull();
+
+		setCompositionRoot(panel);
 	}
 
 	public void setCustomer(Customer customer) {
@@ -42,5 +57,13 @@ public class CustomerNoteGrid extends Grid<CustomerNote> {
 		} else {
 			dataProvider.setFilter(null);
 		}
+	}
+
+	public Registration addSelectionListener(SelectionListener<CustomerNote> listener) {
+		return grid.addSelectionListener(listener);
+	}
+
+	public void refreshAll() {
+		dataProvider.refreshAll();
 	}
 }
